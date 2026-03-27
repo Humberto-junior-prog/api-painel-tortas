@@ -7,27 +7,63 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Criando o servidor HTTP misturado com o Socket.io (Tempo Real)
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: "*", // Permite que qualquer site conecte aqui
+        origin: "*",
         methods: ["GET", "POST"]
     }
 });
 
-// Nossa "Memória Central"
+// ==========================================
+// 🧠 MEMÓRIA DO SERVIDOR
+// ==========================================
+
+// 1. Memória dos cliques (botões verdes do painel)
 let memoriaCentral = {
     'centro_manha': {}, 'centro_tarde': {},
     'sabugo_diario': {}, 'lages_diario': {}
 };
 let dataSalvaCentral = new Date().toLocaleDateString('pt-BR');
 
+// 2. Memória da lista de tortas (Novidade do Gerenciador!)
+let produtosSalvos = [
+    {
+        id: 1,
+        nome: "Empadão de Frango (Exemplo)",
+        centroManha: Array(0,0,0,0,0,0,0),
+        centroTarde: Array(0,0,0,0,0,0,0),
+        sabugo: Array(0,0,0,0,0,0,0),
+        lages: Array(0,0,0,0,0,0,0)
+    }
+];
+
+// ==========================================
+// 🛣️ ROTAS DA API (O Caminho dos Dados)
+// ==========================================
+
 app.get('/', (req, res) => {
     res.send('API do Painel de Tortas está ONLINE! 🥧');
 });
 
-// A MÁGICA DO TEMPO REAL ACONTECE AQUI
+// Rota para o Painel e o Gerenciador LEREM a lista de tortas
+app.get('/produtos', (req, res) => {
+    res.json(produtosSalvos);
+});
+
+// Rota para o Gerenciador SALVAR as alterações
+app.post('/produtos', (req, res) => {
+    produtosSalvos = req.body; // Substitui a lista velha pela nova
+    
+    // Mágica: Avisa o painel de produção na mesma hora que a lista mudou!
+    io.emit('produtosAtualizados', produtosSalvos); 
+    
+    res.status(200).send({ mensagem: "Produtos salvos com sucesso!" });
+});
+
+// ==========================================
+// ⚡ TEMPO REAL (SOCKET.IO)
+// ==========================================
 io.on('connection', (socket) => {
     console.log('Um novo aparelho se conectou! ID:', socket.id);
 
@@ -54,4 +90,3 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
-// teste de envio
